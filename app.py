@@ -2,11 +2,20 @@ import os
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
+from flask_login import (
+    LoginManager,
+    login_user,
+    login_required,
+    logout_user,
+    current_user,
+    UserMixin,
+)
 from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Use /tmp for SQLite file on Elastic Beanstalk (writable location)
+# ---------- App & DB setup ----------
+
+# SQLite file in /tmp so Elastic Beanstalk can write to it
 DB_PATH = os.path.join("/tmp", "letstalk.db")
 
 app = Flask(__name__)
@@ -16,13 +25,14 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
-# Use eventlet in production (with gunicorn), threading for local dev
-async_mode = "eventlet" if os.environ.get("FLASK_ENV") == "production" else "threading"
-socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins="*")
+# Use simple threading mode – works well with Gunicorn on EB
+socketio = SocketIO(app, async_mode="threading", cors_allowed_origins="*")
 
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
+
+# ---------- Models ----------
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -32,8 +42,12 @@ class User(db.Model, UserMixin):
     bio = db.Column(db.Text, default="")
     avatar_url = db.Column(db.String(255), default="")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    posts = db.relationship("Post", backref="author", lazy=True, cascade="all, delete-orphan")
-    likes = db.relationship("PostLike", backref="user", lazy=True, cascade="all, delete-orphan")
+    posts = db.relationship(
+        "Post", backref="author", lazy=True, cascade="all, delete-orphan"
+    )
+    likes = db.relationship(
+        "PostLike", backref="user", lazy=True, cascade="all, delete-orphan"
+    )
 
     def set_password(self, password: str) -> None:
         self.password_hash = generate_password_hash(password)
@@ -47,7 +61,9 @@ class Post(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    likes = db.relationship("PostLike", backref="post", lazy=True, cascade="all, delete-orphan")
+    likes = db.relationship(
+        "PostLike", backref="post", lazy=True, cascade="all, delete-orphan"
+    )
 
     @property
     def like_count(self) -> int:
@@ -73,23 +89,32 @@ class Message(db.Model):
         return "seen" if self.seen_at else "sent"
 
 
-# Create tables once at startup (instead of on every request)
+# Create tables once at startup
 with app.app_context():
     db.create_all()
 
+
+# ---------- Login manager ----------
 
 @login_manager.user_loader
 def load_user(user_id: str):
     return db.session.get(User, int(user_id))
 
 
+# ---------- Routes ----------
+
 @app.route("/")
 @login_required
 def home():
-    users = User.query.filter(User.id != current_user.id).order_by(User.display_name).all()
+    users = (
+        User.query.filter(User.id != current_user.id)
+        .order_by(User.display_name)
+        .all()
+    )
     recent_messages = (
         Message.query.filter(
-            (Message.sender_id == current_user.id) | (Message.receiver_id == current_user.id)
+            (Message.sender_id == current_user.id)
+            | (Message.receiver_id == current_user.id)
         )
         .order_by(Message.created_at.desc())
         .limit(20)
@@ -106,6 +131,7 @@ def register():
         username = request.form.get("username", "").strip().lower()
         display_name = request.form.get("display_name", "").strip()
         password = request.form.get("password", "").strip()
+
         if not username or not display_name or not password:
             flash("All fields are required.", "danger")
         elif User.query.filter_by(username=username).first():
@@ -118,6 +144,7 @@ def register():
             login_user(user)
             flash("Welcome to Let'sTalk!", "success")
             return redirect(url_for("home"))
+
     return render_template("register.html")
 
 
@@ -156,18 +183,31 @@ def user_list():
 @login_required
 def profile(user_id: int):
     user = db.session.get(User, user_id) or abort(404)
-    posts = Post.query.filter_by(user_id=user.id).order_by(Post.created_at.desc()).all()
+    posts = (
+        Post.query.filter_by(user_id=user.id)
+        .order_by(Post.created_at.desc())
+        .all()
+    )
     liked_post_ids = {like.post_id for like in current_user.likes}
-    return render_template("profile.html", profile_user=user, posts=posts, liked_post_ids=liked_post_ids)
+    return render_template(
+        "profile.html",
+        profile_user=user,
+        posts=posts,
+        liked_post_ids=liked_post_ids,
+    )
 
 
 @app.route("/profile/edit", methods=["GET", "POST"])
 @login_required
 def edit_profile():
     if request.method == "POST":
-        current_user.display_name = request.form.get("display_name", current_user.display_name).strip()
+        current_user.display_name = request.form.get(
+            "display_name", current_user.display_name
+        ).strip()
         current_user.bio = request.form.get("bio", current_user.bio).strip()
-        current_user.avatar_url = request.form.get("avatar_url", current_user.avatar_url).strip()
+        current_user.avatar_url = request.form.get(
+            "avatar_url", current_user.avatar_url
+        ).strip()
         db.session.commit()
         flash("Profile updated.", "success")
         return redirect(url_for("profile", user_id=current_user.id))
@@ -204,7 +244,9 @@ def delete_post(post_id: int):
 @login_required
 def like_post(post_id: int):
     post = db.session.get(Post, post_id) or abort(404)
-    existing = PostLike.query.filter_by(user_id=current_user.id, post_id=post.id).first()
+    existing = PostLike.query.filter_by(
+        user_id=current_user.id, post_id=post.id
+    ).first()
     if existing:
         db.session.delete(existing)
         flash("Unliked.", "info")
@@ -230,7 +272,6 @@ def chat(user_id: int):
         .order_by(Message.created_at.asc())
         .all()
     )
-    # Mark incoming messages as seen.
     unseen = [
         m
         for m in messages
@@ -249,16 +290,20 @@ def send_message(user_id: int):
     other = db.session.get(User, user_id) or abort(404)
     if other.id == current_user.id:
         abort(400)
+
     if request.is_json:
         content = (request.json or {}).get("content", "").strip()
     else:
         content = request.form.get("content", "").strip()
+
     if not content:
         flash("Message cannot be empty.", "danger")
         return redirect(url_for("chat", user_id=other.id))
+
     msg = Message(sender_id=current_user.id, receiver_id=other.id, content=content)
     db.session.add(msg)
     db.session.commit()
+
     payload = {
         "id": msg.id,
         "sender_id": msg.sender_id,
@@ -269,10 +314,13 @@ def send_message(user_id: int):
         "seen_at": None,
         "status": msg.status,
     }
+
     socketio.emit("message", payload, room=f"user-{current_user.id}")
     socketio.emit("message", payload, room=f"user-{other.id}")
+
     unread_total = Message.query.filter_by(receiver_id=other.id, seen_at=None).count()
     socketio.emit("unread", {"count": unread_total}, room=f"user-{other.id}")
+
     if request.is_json:
         return jsonify(payload), 201
     return redirect(url_for("chat", user_id=other.id))
@@ -295,7 +343,9 @@ def api_messages(user_id: int):
             {
                 "id": m.id,
                 "sender_id": m.sender_id,
-                "sender_name": m.author.display_name if hasattr(m, "author") else None if not hasattr(m, "author") else None,
+                "sender_name": m.author.display_name
+                if hasattr(m, "author")
+                else None,
                 "receiver_id": m.receiver_id,
                 "content": m.content,
                 "created_at": m.created_at.isoformat(),
@@ -312,28 +362,44 @@ def api_messages(user_id: int):
 def api_mark_seen(user_id: int):
     other = db.session.get(User, user_id) or abort(404)
     incoming = Message.query.filter(
-        (Message.sender_id == other.id) & (Message.receiver_id == current_user.id) & (Message.seen_at.is_(None))
+        (Message.sender_id == other.id)
+        & (Message.receiver_id == current_user.id)
+        & (Message.seen_at.is_(None))
     ).all()
+
     for msg in incoming:
         msg.seen_at = datetime.utcnow()
     db.session.commit()
-    unread_total = Message.query.filter_by(receiver_id=current_user.id, seen_at=None).count()
+
+    unread_total = Message.query.filter_by(
+        receiver_id=current_user.id, seen_at=None
+    ).count()
     socketio.emit("unread", {"count": unread_total}, room=f"user-{current_user.id}")
+
     if incoming:
         socketio.emit(
             "seen",
-            {"by": current_user.id, "for_user": other.id, "message_ids": [m.id for m in incoming]},
+            {
+                "by": current_user.id,
+                "for_user": other.id,
+                "message_ids": [m.id for m in incoming],
+            },
             room=f"user-{other.id}",
         )
+
     return jsonify({"updated": len(incoming), "unread": unread_total})
 
 
 @app.route("/api/unread_count")
 @login_required
 def api_unread_count():
-    unread_total = Message.query.filter_by(receiver_id=current_user.id, seen_at=None).count()
+    unread_total = Message.query.filter_by(
+        receiver_id=current_user.id, seen_at=None
+    ).count()
     return jsonify({"count": unread_total})
 
+
+# ---------- Socket.IO events ----------
 
 @socketio.on("join")
 def on_join(data):
@@ -343,6 +409,8 @@ def on_join(data):
     join_room(f"user-{user_id}")
     emit("joined", {"room": f"user-{user_id}"})
 
+
+# ---------- Entry point ----------
 
 def main():
     port = int(os.environ.get("PORT", 5000))
