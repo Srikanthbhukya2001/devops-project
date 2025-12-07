@@ -6,8 +6,8 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASE_DIR, "letstalk.db")
+# Use /tmp for SQLite file on Elastic Beanstalk (writable location)
+DB_PATH = os.path.join("/tmp", "letstalk.db")
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-please-change")
@@ -15,9 +15,11 @@ app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
-# Use eventlet for production (with gunicorn), threading for development
+
+# Use eventlet in production (with gunicorn), threading for local dev
 async_mode = "eventlet" if os.environ.get("FLASK_ENV") == "production" else "threading"
 socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins="*")
+
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
@@ -71,15 +73,14 @@ class Message(db.Model):
         return "seen" if self.seen_at else "sent"
 
 
+# Create tables once at startup (instead of on every request)
+with app.app_context():
+    db.create_all()
+
+
 @login_manager.user_loader
 def load_user(user_id: str):
     return db.session.get(User, int(user_id))
-
-
-@app.before_request
-def create_tables_if_needed():
-    # Create tables lazily so the user can run the app without a separate migration step.
-    db.create_all()
 
 
 @app.route("/")
@@ -351,4 +352,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
