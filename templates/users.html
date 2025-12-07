@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+    <h2>People</h2>
+    <div class="grid">
+        {% for user in users %}
+        <div class="card user-card">
+            <div class="avatar" style="background-image:url('{{ user.avatar_url or '' }}')"></div>
+            <div>
+                <div class="bold">{{ user.display_name }}</div>
+                <div class="muted">@{{ user.username }}</div>
+            </div>
+            <div class="actions">
+                {% if user.id != current_user.id %}
+                    <a class="btn" href="{{ url_for('chat', user_id=user.id) }}">Chat</a>
+                {% endif %}
+                <a class="link" href="{{ url_for('profile', user_id=user.id) }}">Profile</a>
+            </div>
+        </div>
+        {% else %}
+        <p>No users yet.</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
+

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+    <h2>Chat with {{ other.display_name }}</h2>
+    <div id="chat" class="chat-window" data-other-id="{{ other.id }}">
+        {% for m in messages %}
+            <div class="message {% if m.sender_id == current_user.id %}outgoing{% else %}incoming{% endif %}" data-id="{{ m.id }}">
+                <div class="body">{{ m.content }}</div>
+                <div class="meta">
+                    {{ m.created_at.strftime('%H:%M') }}
+                    {% if m.sender_id == current_user.id %}
+                        <span class="ticks {% if m.seen_at %}seen{% endif %}">✔✔</span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    <form id="chat-form" method="post" action="{{ url_for('send_message', user_id=other.id) }}" class="chat-input">
+        <input type="text" name="content" placeholder="Type a message" required autocomplete="off">
+        <button type="submit" class="btn primary">Send</button>
+    </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.letstalkOtherId = {{ other.id }};
+</script>
+{% endblock %}
+

@@ -1,0 +1,258 @@
+:root {
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    background: #f4f6fb;
+    color: #1f2d3d;
+}
+
+body {
+    margin: 0;
+}
+
+.topbar {
+    background: #2d5be3;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+}
+
+.topbar a {
+    color: white;
+    margin-left: 12px;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.logo {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.badge {
+    display: inline-block;
+    min-width: 20px;
+    padding: 2px 6px;
+    margin-left: 4px;
+    background: #ffb020;
+    color: #1f2d3d;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    vertical-align: middle;
+}
+
+.badge.hidden {
+    display: none;
+}
+
+.container {
+    max-width: 960px;
+    margin: 24px auto;
+    padding: 0 16px;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    padding: 16px 18px;
+    margin-bottom: 16px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.user-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #c8d6ff, #f1f5ff);
+    background-size: cover;
+    background-position: center;
+}
+
+.avatar.large {
+    width: 88px;
+    height: 88px;
+}
+
+.actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+}
+
+.btn {
+    border: none;
+    background: #e3e8ff;
+    color: #1f2d3d;
+    padding: 8px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn.primary {
+    background: #2d5be3;
+    color: white;
+}
+
+.btn.small {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+}
+
+.btn.danger {
+    background: #f56565;
+    color: white;
+}
+
+.link {
+    color: #2d5be3;
+    text-decoration: none;
+}
+
+.form label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.form input, .form textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    border: 1px solid #d6dce5;
+}
+
+.narrow {
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+.flash-list {
+    list-style: none;
+    padding: 0;
+}
+
+.flash {
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+.flash.success { background: #e6ffed; color: #0f7a3b; }
+.flash.info { background: #e8f2ff; color: #23408e; }
+.flash.danger { background: #ffe8e6; color: #b83227; }
+.flash.warning { background: #fff9e6; color: #9c6f00; }
+
+.popup {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    background: #2d5be3;
+    color: white;
+    padding: 10px 12px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    animation: fadein 0.2s ease-out;
+}
+
+@keyframes fadein {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.profile-header {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.post {
+    border-bottom: 1px solid #eef0f5;
+    padding: 8px 0;
+}
+
+.post-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.muted {
+    color: #6b7280;
+}
+
+.bold { font-weight: 700; }
+
+.chat-window {
+    border: 1px solid #e5e7eb;
+    min-height: 320px;
+    max-height: 440px;
+    overflow-y: auto;
+    padding: 12px;
+    background: linear-gradient(180deg, #fdfdff, #f1f5ff);
+    margin-bottom: 12px;
+}
+
+.message {
+    max-width: 70%;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
+}
+
+.message.outgoing {
+    margin-left: auto;
+    background: #dbeafe;
+}
+
+.message.incoming {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+}
+
+.message .meta {
+    font-size: 0.8rem;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ticks {
+    font-weight: 700;
+    color: #6b7280;
+}
+
+.ticks.seen {
+    color: #2d5be3;
+}
+
+.chat-input {
+    display: flex;
+    gap: 8px;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #d6dce5;
+    border-radius: 8px;
+}
+

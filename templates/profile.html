@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+    <div class="profile-header">
+        <div class="avatar large" style="background-image:url('{{ profile_user.avatar_url or '' }}')"></div>
+        <div>
+            <h2>{{ profile_user.display_name }}</h2>
+            <div class="muted">@{{ profile_user.username }}</div>
+            <p>{{ profile_user.bio or "No bio yet." }}</p>
+            {% if profile_user.id == current_user.id %}
+                <a class="btn" href="{{ url_for('edit_profile') }}">Edit profile</a>
+            {% else %}
+                <a class="btn" href="{{ url_for('chat', user_id=profile_user.id) }}">Chat</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+{% if profile_user.id == current_user.id %}
+<section class="card">
+    <h3>Create a post</h3>
+    <form method="post" action="{{ url_for('create_post') }}" class="form">
+        <textarea name="content" required rows="3" placeholder="Share something..."></textarea>
+        <button type="submit" class="btn primary">Post</button>
+    </form>
+</section>
+{% endif %}
+
+<section class="card">
+    <h3>Posts</h3>
+    {% for post in posts %}
+        <div class="post">
+            <div class="muted">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            <p>{{ post.content }}</p>
+            <div class="post-actions">
+                <form method="post" action="{{ url_for('like_post', post_id=post.id) }}">
+                    <button type="submit" class="btn small">
+                        {% if post.id in liked_post_ids %}Unlike{% else %}Like{% endif %} ({{ post.like_count }})
+                    </button>
+                </form>
+                {% if post.user_id == current_user.id %}
+                    <form method="post" action="{{ url_for('delete_post', post_id=post.id) }}">
+                        <button type="submit" class="btn small danger">Delete</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        <p class="muted">No posts yet.</p>
+    {% endfor %}
+</section>
+{% endblock %}
+
