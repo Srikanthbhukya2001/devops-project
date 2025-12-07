@@ -37,15 +37,15 @@ jobs:
       - name: Create EB CLI config
         run: |
           mkdir -p .elasticbeanstalk
-          cat > .elasticbeanstalk/config.yml << EOF
-branch-defaults:
-  main:
-    environment: Letstalk-app-env
-global:
-  application_name: letstalk-app
-  default_region: ${AWS_REGION}
-  sc: git
-EOF
+          printf '%s\n' \
+            "branch-defaults:" \
+            "  main:" \
+            "    environment: Letstalk-app-env" \
+            "global:" \
+            "  application_name: letstalk-app" \
+            "  default_region: ${AWS_REGION}" \
+            "  sc: git" \
+            > .elasticbeanstalk/config.yml
 
       - name: Deploy to Elastic Beanstalk
         run: |
