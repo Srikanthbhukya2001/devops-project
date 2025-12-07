@@ -1,0 +1,55 @@
+name: CI/CD to Elastic Beanstalk
+
+on:
+  push:
+    branches: [ "main" ]   # change if your default branch is different
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: ./code
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Create deployment package (zip)
+        run: |
+          cd code
+          zip -r ../letstalk-build.zip . -x "*.git*"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload bundle to S3
+        run: |
+          VERSION_LABEL="build-${{ github.run_number }}"
+          aws s3 cp letstalk-build.zip "s3://${{ secrets.EB_S3_BUCKET }}/${{ secrets.EB_APPLICATION_NAME }}/${VERSION_LABEL}.zip"
+          echo "VERSION_LABEL=$VERSION_LABEL" >> $GITHUB_ENV
+
+      - name: Create new EB application version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name "${{ secrets.EB_APPLICATION_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}" \
+            --source-bundle S3Bucket="${{ secrets.EB_S3_BUCKET }}",S3Key="${{ secrets.EB_APPLICATION_NAME }}/${{ env.VERSION_LABEL }}.zip"
+
+      - name: Deploy to Elastic Beanstalk
+        run: |
+          aws elasticbeanstalk update-environment \
+            --environment-name "${{ secrets.EB_ENVIRONMENT_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}"
