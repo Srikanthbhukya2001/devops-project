@@ -2,7 +2,7 @@ name: CI/CD to Elastic Beanstalk
 
 on:
   push:
-    branches: [ "main" ]   # change if your main branch name is different
+    branches: [ "main" ]   # change if your main branch is different
 
 jobs:
   deploy:
@@ -31,10 +31,22 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}  # for AWS Learner Lab
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}   # Learner Lab token
           aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Create EB CLI config
+        run: |
+          mkdir -p .elasticbeanstalk
+          cat > .elasticbeanstalk/config.yml << EOF
+branch-defaults:
+  main:
+    environment: Letstalk-app-env
+global:
+  application_name: letstalk-app
+  default_region: ${AWS_REGION}
+  sc: git
+EOF
 
       - name: Deploy to Elastic Beanstalk
         run: |
-          # Explicitly specify your environment name
-          eb deploy Letstalk-app-env --staged
+          eb deploy --staged
