@@ -18,15 +18,14 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        working-directory: ./code
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Create deployment package (zip)
         run: |
-          cd code
-          zip -r ../letstalk-build.zip . -x "*.git*"
+          # zip everything in the repo except git and workflows
+          zip -r letstalk-build.zip . -x "*.git*" ".github/*"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
